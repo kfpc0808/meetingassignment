@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미팅 배정 시스템 - 전문위원</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','맑은 고딕',Apple SD Gothic Neo,sans-serif;background:#EEF2F7;color:#222;min-height:100vh;font-size:14px}
+.page{display:none}.page.active{display:block}
+:root{--navy:#1B3A6B;--blue:#2E75B6;--sky:#EBF3FB;--green:#27AE60;--green-light:#E8F8EF;--orange:#E67E22;--orange-light:#FEF3E2;--red:#E74C3C;--red-light:#FDECEA;--gray:#6C757D;--gray-light:#F4F6F8;--border:#DDE3EA;--shadow:0 2px 12px rgba(0,0,0,.08);--shadow-lg:0 8px 32px rgba(0,0,0,.12)}
+
+/* 로그인 */
+#page-login,#page-changepw{min-height:100vh;background:linear-gradient(135deg,#1B3A6B 0%,#2E75B6 60%,#5B9BD5 100%);display:none;align-items:center;justify-content:center;padding:20px}
+#page-login.active,#page-changepw.active{display:flex}
+.auth-box{background:#fff;border-radius:20px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.auth-logo{text-align:center;margin-bottom:32px}
+.auth-logo .icon{width:64px;height:64px;background:var(--navy);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px}
+.auth-logo h1{font-size:20px;font-weight:700;color:var(--navy)}
+.auth-logo p{font-size:12px;color:var(--gray);margin-top:4px}
+.auth-box h2{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.auth-box .sub{font-size:13px;color:var(--gray);margin-bottom:28px}
+.form-g{margin-bottom:18px}
+.form-g label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px}
+.form-g input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;font-size:14px;font-family:inherit;transition:border-color .2s;outline:none;background:#FAFBFC}
+.form-g input:focus{border-color:var(--blue);background:#fff}
+.btn-primary{width:100%;background:var(--navy);color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-primary:hover{background:var(--blue)}
+.auth-err{background:#FDECEA;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+
+/* 네비 */
+.navbar{background:var(--navy);color:#fff;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand{font-size:16px;font-weight:700}
+.nav-brand small{font-size:11px;color:#90CAF9;margin-left:8px;font-weight:400}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-user{font-size:13px;color:#B0C4DE}
+.nav-badge{background:rgba(255,255,255,.15);padding:5px 12px;border-radius:20px;font-size:12px;color:#fff}
+.nav-badge.blocked{background:rgba(231,76,60,.4);color:#FFD0CC}
+.btn-nav{background:rgba(255,255,255,.12);border:none;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;transition:background .2s}
+.btn-nav:hover{background:rgba(255,255,255,.22)}
+
+/* 탭 */
+.tab-menu{background:#fff;border-bottom:1px solid var(--border);display:flex;padding:0 20px;position:sticky;top:56px;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.05);overflow-x:auto}
+.tab-item{padding:14px 20px;font-size:14px;font-weight:600;color:var(--gray);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+.tab-item:hover{color:var(--blue)}
+.tab-item.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* 공통 */
+.container{max-width:900px;margin:0 auto;padding:20px 16px}
+.card{background:#fff;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700;color:var(--navy)}
+.banner{padding:12px 16px;border-radius:10px;margin-bottom:10px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.banner.warn{background:var(--orange-light);color:var(--orange);border:1px solid #FBBF24}
+.banner.info{background:var(--sky);color:var(--blue);border:1px solid #BAD7F2}
+.banner.block{background:var(--red-light);color:var(--red);border:1px solid #F5C6CB}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-open{background:#E8F4FD;color:#1565C0}
+.badge-pending{background:var(--orange-light);color:var(--orange)}
+.badge-assigned{background:var(--green-light);color:var(--green)}
+.badge-done{background:#F3E5F5;color:#7B1FA2}
+.badge-cancelled{background:#F5F5F5;color:#9E9E9E}
+.btn{border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#1F5A9A}
+.btn-blue:disabled{background:#B0BEC5;cursor:not-allowed}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#219A52}
+.btn-orange{background:var(--orange);color:#fff}.btn-orange:hover{background:#CA6F1E}
+.btn-outline{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}.btn-outline:hover{background:var(--sky)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.form-row{margin-bottom:16px}
+.form-row label{display:block;font-size:12px;font-weight:700;color:#555;margin-bottom:6px}
+.form-row label .req{color:var(--red);margin-left:3px}
+.fc{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;background:#FAFBFC}
+.fc:focus{border-color:var(--blue);background:#fff}
+select.fc{cursor:pointer}
+textarea.fc{resize:vertical;min-height:80px}
+.empty-state{text-align:center;padding:48px 20px;color:var(--gray)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.loading{text-align:center;padding:40px;color:var(--gray);font-size:13px}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;max-width:90%;text-align:center;pointer-events:none}
+#toast.show{opacity:1}
+#toast.success{background:#1B5E20}
+#toast.error{background:#B71C1C}
+
+/* 대시보드 */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.stat-card{background:#fff;border-radius:12px;padding:16px;box-shadow:var(--shadow);text-align:center}
+.stat-card .num{font-size:28px;font-weight:800;line-height:1.1}
+.stat-card .lbl{font-size:12px;color:var(--gray);margin-top:4px}
+.stat-card.blue .num{color:var(--blue)}
+.stat-card.green .num{color:var(--green)}
+.stat-card.orange .num{color:var(--orange)}
+
+/* 미팅 카드 */
+.mc{background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow);border-left:4px solid var(--blue);cursor:pointer;transition:box-shadow .2s,transform .1s}
+.mc:hover{box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.mc.pending{border-left-color:var(--orange)}
+.mc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mc-name{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.mc-info{font-size:13px;color:var(--gray);display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.mc-bottom{display:flex;align-items:center;justify-content:space-between}
+
+/* 내 미팅 */
+.mmi{background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);border-left:4px solid var(--green)}
+.mmi.need-precall{border-left-color:var(--orange)}
+.mmi.need-result{border-left-color:var(--red)}
+.mmi-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+.mmi-name{font-size:15px;font-weight:700;color:var(--navy)}
+.mmi-info{font-size:12px;color:var(--gray);margin-bottom:8px}
+.mmi-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.tag-ok{background:var(--green-light);color:var(--green)}
+.tag-need{background:var(--orange-light);color:var(--orange)}
+.tag-done{background:#F3E5F5;color:#7B1FA2}
+.mmi-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* 모달 */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-ov.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy)}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);line-height:1;padding:4px}
+.modal-ft{margin-top:20px;display:flex;gap:10px;justify-content:flex-end}
+.detail-sec{margin-bottom:18px}
+.detail-sec h4{font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.detail-row{display:flex;gap:8px;margin-bottom:6px;font-size:13px}
+.detail-lbl{color:var(--gray);min-width:72px;flex-shrink:0}
+.detail-val{color:#222;font-weight:500}
+.detail-txt{background:var(--gray-light);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;color:#444}
+
+@media(max-width:600px){
+  .stat-grid{gap:8px}.stat-card{padding:12px 8px}.stat-card .num{font-size:22px}
+  .tab-item{padding:12px 14px;font-size:13px}.container{padding:14px 12px}
+  .modal{padding:20px 16px}.mc-top{flex-direction:column}
+  .auth-box{padding:36px 24px}
+}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- ① 로그인 -->
+<div id="page-login" class="page">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="icon">📋</div>
+      <h1>미팅 배정 시스템</h1>
+      <p>한국FP센터 전문위원 전용</p>
+    </div>
+    <div class="auth-err" id="login-err"></div>
+    <div class="form-g"><label>아이디</label><input type="text" id="inp-id" placeholder="아이디 입력" autocomplete="username"></div>
+    <div class="form-g"><label>비밀번호</label><input type="password" id="inp-pw" placeholder="비밀번호 입력" autocomplete="current-password"></div>
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">로그인</button>
+  </div>
+</div>
+
+<!-- ② 비밀번호 변경 -->
+<div id="page-changepw" class="page">
+  <div class="auth-box">
+    <h2>🔒 비밀번호 변경 필요</h2>
+    <p class="sub">첫 로그인입니다. 새 비밀번호를 설정해 주세요.</p>
+    <div class="auth-err" id="changepw-err"></div>
+    <div class="form-g"><label>현재 비밀번호</label><input type="password" id="cp-cur" placeholder="현재 비밀번호"></div>
+    <div class="form-g"><label>새 비밀번호 <span style="font-size:11px;color:var(--gray)">(8자 이상, 휴대폰번호 불가)</span></label><input type="password" id="cp-new" placeholder="새 비밀번호"></div>
+    <div class="form-g"><label>새 비밀번호 확인</label><input type="password" id="cp-confirm" placeholder="비밀번호 재입력"></div>
+    <button class="btn-primary" onclick="doChangePassword()">비밀번호 변경</button>
+  </div>
+</div>
+
+<!-- ③ 메인 -->
+<div id="page-main" class="page">
+  <nav class="navbar">
+    <div class="nav-brand">📋 미팅 배정 시스템 <small>전문위원</small></div>
+    <div class="nav-right">
+      <span class="nav-badge" id="nav-week-badge">주간 신청 가능</span>
+      <span class="nav-user" id="nav-username"></span>
+      <button class="btn-nav" onclick="doLogout()">로그아웃</button>
+    </div>
+  </nav>
+  <div class="tab-menu">
+    <div class="tab-item active" onclick="switchTab('t-dash',0)">🏠 대시보드</div>
+    <div class="tab-item" onclick="switchTab('t-list',1)">📋 미팅 목록</div>
+    <div class="tab-item" onclick="switchTab('t-my',2)">📁 내 진행 현황</div>
+  </div>
+
+  <!-- 대시보드 -->
+  <div id="t-dash" class="tab-content active">
+    <div class="container">
+      <div id="banner-area"></div>
+      <div class="stat-grid">
+        <div class="stat-card blue"><div class="num" id="d-avail">-</div><div class="lbl">신청 가능 미팅</div></div>
+        <div class="stat-card orange"><div class="num" id="d-precall">-</div><div class="lbl">사전콜 필요</div></div>
+        <div class="stat-card green" style="cursor:pointer" onclick="switchTab('t-my',2)"><div class="num" id="d-my">-</div><div class="lbl">내 담당 미팅</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 신청 가능한 미팅</span>
+          <button class="btn btn-outline btn-sm" onclick="switchTab('t-list',1)">전체 보기</button>
+        </div>
+        <div id="d-meeting-list"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+      </div>
+      <div class="card" id="d-record-card" style="display:none">
+        <div class="card-header"><span class="card-title">⚠️ 기록이 필요한 미팅</span></div>
+        <div id="d-record-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 미팅 목록 -->
+  <div id="t-list" class="tab-content">
+    <div class="container">
+      <div id="weekly-banner" class="banner block" style="display:none">🚫 이번 주 1회 신청 후 확정되셨습니다. 다음 주에 신청 가능합니다.</div>
+      <div id="meeting-list-area"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 내 진행 현황 -->
+  <div id="t-my" class="tab-content">
+    <div class="container">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-blue btn-sm" onclick="filterMy('all')" id="f-all">전체</button>
+        <button class="btn btn-outline btn-sm" onclick="filterMy('precall')" id="f-precall">사전콜 필요</button>
+        <button class="btn btn-outline btn-sm" onclick="filterMy('result')" id="f-result">결과기록 필요</button>
+        <button class="btn btn-outline btn-sm" onclick="filterMy('done')" id="f-done">완료</button>
+      </div>
+      <div id="my-list"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 미팅 상세 -->
+<div class="modal-ov" id="m-detail">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-title" id="m-detail-title">미팅 상세</span><button class="modal-close" onclick="cm('m-detail')">✕</button></div>
+    <div id="m-detail-body"></div>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="cm('m-detail')">닫기</button>
+      <button class="btn btn-blue" id="btn-apply-modal" onclick="doApply()" style="display:none">신청하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 신청 확인 -->
+<div class="modal-ov" id="m-applyconfirm">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-hd"><span class="modal-title">미팅 신청 확인</span><button class="modal-close" onclick="cm('m-applyconfirm')">✕</button></div>
+    <p id="apply-msg" style="font-size:14px;line-height:1.7;color:#444;white-space:pre-line"></p>
+    <div class="modal-ft">
+      <button class="btn btn-outline" onclick="cm('m-applyconfirm')">취소</button>
+      <button class="btn btn-blue" onclick="confirmApply()">신청</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 사전콜 -->
+<div class="modal-ov" id="m-precall">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-title">📞 사전콜 기록 입력</span><button class="modal-close" onclick="cm('m-precall')">✕</button></div>
+    <input type="hidden" id="pc-mid">
+    <div class="form-row"><label>통화 상태 <span class="req">*</span></label>
+      <select class="fc" id="pc-status"><option value="">선택</option><option>통화완료</option><option>부재</option><option>통화불가</option><option>번호오류</option></select></div>
+    <div class="form-row"><label>통화 일시 <span class="req">*</span></label><input type="datetime-local" class="fc" id="pc-at"></div>
+    <div class="form-row"><label>통화 내용 <span class="req">*</span></label><textarea class="fc" id="pc-note" rows="3" placeholder="예) 고객과 통화 완료, 내일 오전 11시 방문 확정"></textarea></div>
+    <div class="form-row"><label>특이사항</label><textarea class="fc" id="pc-special" rows="2" placeholder="예) 담당자 1명 동석 예정"></textarea></div>
+    <div class="form-row"><label>내일 미팅 확정 여부</label>
+      <select class="fc" id="pc-confirm"><option value="Y">예 - 미팅 확정</option><option value="N">아니오</option></select></div>
+    <div class="modal-ft"><button class="btn btn-outline" onclick="cm('m-precall')">취소</button><button class="btn btn-blue" onclick="doSavePreCall()">저장</button></div>
+  </div>
+</div>
+
+<!-- 모달: 결과 기록 -->
+<div class="modal-ov" id="m-result">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-title">📝 미팅 결과 기록</span><button class="modal-close" onclick="cm('m-result')">✕</button></div>
+    <input type="hidden" id="res-mid">
+    <div class="form-row"><label>미팅 결과 <span class="req">*</span></label>
+      <select class="fc" id="res-status"><option value="">선택</option><option>완료</option><option>연기</option><option>취소</option></select></div>
+    <div class="form-row"><label>실제 미팅 일시 <span class="req">*</span></label><input type="datetime-local" class="fc" id="res-at"></div>
+    <div class="form-row"><label>결과 요약 <span class="req">*</span></label><textarea class="fc" id="res-summary" rows="3" placeholder="미팅 결과를 간략히 요약해 주세요"></textarea></div>
+    <div class="form-row"><label>상세 내용</label><textarea class="fc" id="res-detail" rows="2"></textarea></div>
+    <div class="form-row"><label>후속조치 계획</label><textarea class="fc" id="res-followup" rows="2"></textarea></div>
+    <div class="form-row"><label>다음 일정</label><input type="datetime-local" class="fc" id="res-next"></div>
+    <div class="modal-ft"><button class="btn btn-outline" onclick="cm('m-result')">취소</button><button class="btn btn-blue" onclick="doSaveResult()">저장</button></div>
+  </div>
+</div>
+
+<script>
+// ── 설정 ──────────────────────────────────────────────────────
+const API_URL = 'https://script.google.com/macros/s/여기에_APPS_SCRIPT_URL_입력/exec';
+
+// ── 전역 상태 ─────────────────────────────────────────────────
+let S = { token:null, user:null, meetings:[], myMeetings:[], curMid:null, blocked:false, myFilter:'all' };
+
+// ── 초기화 ────────────────────────────────────────────────────
+window.onload = () => {
+  const t = localStorage.getItem('fp_token');
+  const u = localStorage.getItem('fp_user');
+  if (t && u) {
+    S.token = t; S.user = JSON.parse(u);
+    if (S.user.mustChangePassword === true || S.user.mustChangePassword === 'true') showPage('page-changepw');
+    else { showPage('page-main'); initMain(); }
+  } else showPage('page-login');
+  document.getElementById('inp-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('cp-confirm').addEventListener('keydown', e => { if(e.key==='Enter') doChangePassword(); });
+};
+
+// ── 페이지/탭 ─────────────────────────────────────────────────
+function showPage(id) { document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function switchTab(id, idx) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab-item')[idx].classList.add('active');
+  if (id==='t-list') loadMeetings();
+  if (id==='t-my')   loadMyMeetings();
+}
+
+// ── API ───────────────────────────────────────────────────────
+async function api(action, body={}) {
+  try {
+    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action, token:S.token, ...body}) });
+    const data = await r.json();
+    // 세션 만료 감지 → 자동 로그아웃
+    if (!data.success && data.message && data.message.includes('인증이 필요합니다')) {
+      localStorage.removeItem('fp_token');
+      localStorage.removeItem('fp_user');
+      S.token = null; S.user = null;
+      showPage('page-login');
+      showToast('세션이 만료되었습니다. 다시 로그인해 주세요.', 'error');
+    }
+    return data;
+  } catch(e) { return {success:false, message:'서버 연결 오류. 잠시 후 다시 시도해 주세요.'}; }
+}
+
+// ── 로그인 ────────────────────────────────────────────────────
+async function doLogin() {
+  const loginId=document.getElementById('inp-id').value.trim(), password=document.getElementById('inp-pw').value;
+  const btn=document.getElementById('btn-login'), err=document.getElementById('login-err');
+  if (!loginId||!password) { showErr(err,'아이디와 비밀번호를 입력해 주세요.'); return; }
+  err.style.display='none'; btn.textContent='로그인 중...'; btn.disabled=true;
+  const r = await api('login',{loginId,password});
+  btn.textContent='로그인'; btn.disabled=false;
+  if (!r.success) { showErr(err,r.message); return; }
+  S.token=r.token; S.user=r.user;
+  localStorage.setItem('fp_token',r.token); localStorage.setItem('fp_user',JSON.stringify(r.user));
+  if (r.mustChangePassword) showPage('page-changepw');
+  else { showPage('page-main'); initMain(); }
+}
+
+async function doLogout() {
+  await api('logout');
+  localStorage.removeItem('fp_token'); localStorage.removeItem('fp_user');
+  S.token=null; S.user=null; showPage('page-login'); showToast('로그아웃 되었습니다.');
+}
+
+async function doChangePassword() {
+  const cur=document.getElementById('cp-cur').value, nw=document.getElementById('cp-new').value, conf=document.getElementById('cp-confirm').value;
+  const err=document.getElementById('changepw-err');
+  if (!cur||!nw||!conf) { showErr(err,'모든 항목을 입력해 주세요.'); return; }
+  if (nw!==conf) { showErr(err,'새 비밀번호가 일치하지 않습니다.'); return; }
+  if (nw.length<8) { showErr(err,'비밀번호는 8자 이상이어야 합니다.'); return; }
+  const r = await api('changePassword',{currentPassword:cur,newPassword:nw});
+  if (!r.success) { showErr(err,r.message); return; }
+  S.user.mustChangePassword=false; localStorage.setItem('fp_user',JSON.stringify(S.user));
+  showPage('page-main'); initMain(); showToast('비밀번호가 변경되었습니다.','success');
+}
+
+// ── 메인 초기화 ───────────────────────────────────────────────
+async function initMain() {
+  document.getElementById('nav-username').textContent = S.user.displayName+'님';
+  loadDashboard();
+}
+
+// ── 대시보드 ──────────────────────────────────────────────────
+async function loadDashboard() {
+  const [mr, mmr] = await Promise.all([api('getMeetingList'), api('getMyMeetings')]);
+  if (!mr.success) { showToast(mr.message,'error'); return; }
+
+  S.meetings=mr.list; S.blocked=mr.isWeeklyBlocked;
+  const badge=document.getElementById('nav-week-badge');
+  if (S.blocked) { badge.textContent='이번 주 신청 확정됨'; badge.className='nav-badge blocked'; }
+  else { badge.textContent='주간 신청 가능'; badge.className='nav-badge'; }
+
+  document.getElementById('d-avail').textContent = mr.list.filter(m=>m.canApply).length;
+
+  const bannerArea=document.getElementById('banner-area'); bannerArea.innerHTML='';
+  if (S.blocked) bannerArea.innerHTML+=`<div class="banner block">🚫 이번 주 1회 신청 후 확정되셨습니다. 다음 주에 신청 가능합니다.</div>`;
+
+  if (mmr.success) {
+    S.myMeetings=mmr.list;
+    document.getElementById('d-my').textContent=mmr.list.length;
+    const np=mmr.needPreCall?.length||0, nr=mmr.needResult?.length||0;
+    document.getElementById('d-precall').textContent=np;
+    if (np>0) bannerArea.innerHTML+=`<div class="banner warn">⚠️ 사전콜 기록이 필요한 미팅이 ${np}건 있습니다.</div>`;
+    if (nr>0) bannerArea.innerHTML+=`<div class="banner warn">📝 결과 기록이 필요한 미팅이 ${nr}건 있습니다.</div>`;
+    // 기록 필요 카드 초기화 후 조건부 표시
+    document.getElementById('d-record-card').style.display='none';
+    if (np>0||nr>0) {
+      document.getElementById('d-record-card').style.display='block';
+      let html='';
+      (mmr.needPreCall||[]).forEach(m=>{ html+=`<div class="mmi need-precall" style="margin-bottom:8px"><div class="mmi-top"><div class="mmi-name">${m.customerName}</div><span class="tag tag-need">사전콜 필요</span></div><div class="mmi-info">📅 ${m.meetingDate} ${m.meetingTime}</div><button class="btn btn-orange btn-sm" onclick="openPreCall('${m.meetingId}')">사전콜 기록 입력</button></div>`; });
+      (mmr.needResult||[]).forEach(m=>{ html+=`<div class="mmi need-result" style="margin-bottom:8px"><div class="mmi-top"><div class="mmi-name">${m.customerName}</div><span class="tag tag-need">결과기록 필요</span></div><div class="mmi-info">📅 ${m.meetingDate} ${m.meetingTime}</div><button class="btn btn-orange btn-sm" onclick="openResult('${m.meetingId}')">결과 기록 입력</button></div>`; });
+      document.getElementById('d-record-list').innerHTML=html;
+    }
+  }
+
+  const dl=document.getElementById('d-meeting-list'), preview=mr.list.slice(0,3);
+  dl.innerHTML = preview.length===0 ? `<div class="empty-state"><div class="icon">📭</div><p>현재 신청 가능한 미팅이 없습니다.</p></div>` : preview.map(renderMC).join('');
+}
+
+// ── 미팅 목록 ─────────────────────────────────────────────────
+async function loadMeetings() {
+  const area=document.getElementById('meeting-list-area');
+  area.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  const r=await api('getMeetingList');
+  if (!r.success) { area.innerHTML=`<div class="empty-state"><p>${r.message}</p></div>`; return; }
+  S.meetings=r.list; S.blocked=r.isWeeklyBlocked;
+  document.getElementById('weekly-banner').style.display=r.isWeeklyBlocked?'flex':'none';
+  area.innerHTML = r.list.length===0 ? `<div class="empty-state"><div class="icon">📭</div><p>현재 신청 가능한 미팅이 없습니다.</p></div>` : r.list.map(renderMC).join('');
+}
+
+function renderMC(m) {
+  const stBadge = m.status==='OPEN' ? `<span class="badge badge-open">모집중</span>` : `<span class="badge badge-pending">신청접수</span>`;
+  // #8: 고객명 특수문자 이스케이프 (data 속성 활용)
+  const safeName = m.customerName.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  let applyBtn='';
+  if (m.myApplicationStatus==='APPLIED') applyBtn=`<span class="tag tag-need" style="font-size:12px">신청완료 (${m.myOrderNo}번째)</span>`;
+  else if (S.blocked) applyBtn=`<button class="btn btn-sm" style="background:#F0F0F0;color:#999;cursor:not-allowed" disabled>이번 주 신청 확정</button>`;
+  else applyBtn=`<button class="btn btn-blue btn-sm" onclick="event.stopPropagation();openApplyConfirm('${m.meetingId}',this.closest('[data-mid]').dataset.name)">신청하기</button>`;
+  return `<div class="mc ${m.status==='PENDING_CONFIRM'?'pending':''}" data-mid="${m.meetingId}" data-name="${safeName}" onclick="openDetail('${m.meetingId}')">
+    <div class="mc-top"><div><div class="mc-name">${m.customerName}</div><div class="mc-info"><span>📅 ${m.meetingDate} (${m.weekday})</span><span>🕐 ${m.meetingTime}</span><span>📍 ${m.locationType}${m.locationDetail?' · '+m.locationDetail:''}</span></div></div>${stBadge}</div>
+    <div class="mc-bottom"><span style="font-size:12px;color:var(--gray)">신청자 ${m.applicationCount||0}명</span><div>${applyBtn}</div></div>
+  </div>`;
+}
+
+// ── 미팅 상세 ─────────────────────────────────────────────────
+async function openDetail(mid) {
+  S.curMid=mid;
+  const body=document.getElementById('m-detail-body');
+  body.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  om('m-detail');
+  const r=await api('getMeetingDetail',{meetingId:mid});
+  if (!r.success) { body.innerHTML=`<p style="color:var(--red)">${r.message}</p>`; return; }
+  const m=r.meeting;
+  document.getElementById('m-detail-title').textContent=m.customerName+' 미팅 상세';
+  let top='';
+  if (r.myApplicationStatus==='APPLIED') { top=`<div class="banner info">✅ 신청 완료 (${r.myOrderNo}번째) · 관리자 확정 대기 중</div>`; document.getElementById('btn-apply-modal').style.display='none'; }
+  else if (S.blocked) { top=`<div class="banner block">🚫 이번 주 신청 후 확정되어 신청할 수 없습니다.</div>`; document.getElementById('btn-apply-modal').style.display='none'; }
+  else if (r.canApply) document.getElementById('btn-apply-modal').style.display='inline-flex';
+  else document.getElementById('btn-apply-modal').style.display='none';
+  body.innerHTML=`${top}
+    <div class="detail-sec"><h4>미팅 정보</h4>
+      <div class="detail-row"><span class="detail-lbl">고객명</span><span class="detail-val">${m.customerName}</span></div>
+      <div class="detail-row"><span class="detail-lbl">일시</span><span class="detail-val">${m.meetingDate} (${m.weekday}) ${m.meetingTime}</span></div>
+      <div class="detail-row"><span class="detail-lbl">방식</span><span class="detail-val">${m.locationType}${m.locationDetail?' · '+m.locationDetail:''}</span></div>
+      <div class="detail-row"><span class="detail-lbl">신청자 수</span><span class="detail-val">${m.applicationCount}명</span></div>
+      <div class="detail-row"><span class="detail-lbl">상태</span><span class="detail-val">${stTxt(m.status)}</span></div>
+    </div>
+    ${m.meetingSummary?`<div class="detail-sec"><h4>미팅 안내</h4><div class="detail-txt">${m.meetingSummary}</div></div>`:''}
+    ${m.preparationNote?`<div class="detail-sec"><h4>준비사항 / 특이사항</h4><div class="detail-txt">${m.preparationNote}</div></div>`:''}`;
+}
+
+// ── 신청 ──────────────────────────────────────────────────────
+function openApplyConfirm(mid, name) {
+  S.curMid=mid;
+  document.getElementById('apply-msg').textContent=`"${name}" 미팅을 신청하시겠습니까?\n신청 후 관리자가 담당자를 확정합니다.`;
+  om('m-applyconfirm');
+}
+function confirmApply() { cm('m-applyconfirm'); doApply(); }
+async function doApply() {
+  cm('m-detail');
+  const r=await api('applyMeeting',{meetingId:S.curMid});
+  if (!r.success) { showToast(r.message,'error'); return; }
+  showToast(`신청 완료! (${r.orderNo}번째) 관리자 확정 후 안내됩니다.`,'success');
+  loadDashboard();
+  if (document.getElementById('t-list').classList.contains('active')) loadMeetings();
+}
+
+// ── 내 진행 현황 ──────────────────────────────────────────────
+async function loadMyMeetings() {
+  const area=document.getElementById('my-list');
+  area.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  const r=await api('getMyMeetings');
+  if (!r.success) { area.innerHTML=`<div class="empty-state"><p>${r.message}</p></div>`; return; }
+  S.myMeetings=r.list; renderMy();
+}
+function filterMy(f) {
+  S.myFilter=f;
+  ['all','precall','result','done'].forEach(k=>{ document.getElementById('f-'+k).className='btn btn-sm '+(k===f?'btn-blue':'btn-outline'); });
+  renderMy();
+}
+function renderMy() {
+  const area=document.getElementById('my-list'), today=new Date().toISOString().slice(0,10);
+  let list=S.myMeetings;
+  if (S.myFilter==='precall') list=list.filter(m=>!m.hasPreCall&&m.meetingDate>=today);
+  else if (S.myFilter==='result') list=list.filter(m=>!m.hasResult&&m.meetingDate<today);
+  else if (S.myFilter==='done') list=list.filter(m=>m.hasResult);
+  if (!list.length) { area.innerHTML=`<div class="empty-state"><div class="icon">📁</div><p>해당하는 미팅이 없습니다.</p></div>`; return; }
+  area.innerHTML=list.map(m=>{
+    const isPast=m.meetingDate<today; let cls='',tags='',actions='';
+    if (!m.hasPreCall&&!isPast) { cls='need-precall'; tags+=`<span class="tag tag-need">사전콜 필요</span>`; actions+=`<button class="btn btn-orange btn-sm" onclick="openPreCall('${m.meetingId}')">사전콜 기록</button>`; }
+    else if (m.hasPreCall) tags+=`<span class="tag tag-ok">사전콜 완료</span>`;
+    if (!m.hasResult&&isPast) { cls='need-result'; tags+=`<span class="tag tag-need">결과기록 필요</span>`; actions+=`<button class="btn btn-blue btn-sm" onclick="openResult('${m.meetingId}')">결과 기록</button>`; }
+    else if (m.hasResult) { tags+=`<span class="tag tag-done">결과기록 완료</span>`; actions+=`<button class="btn btn-outline btn-sm" onclick="openResult('${m.meetingId}')">결과 수정</button>`; }
+    return `<div class="mmi ${cls}"><div class="mmi-top"><div class="mmi-name">${m.customerName}</div><span class="badge ${m.hasResult?'badge-done':'badge-assigned'}">${m.hasResult?'완료':'담당 확정'}</span></div><div class="mmi-info">📅 ${m.meetingDate} ${m.meetingTime} &nbsp;|&nbsp; 📍 ${m.locationType}${m.locationDetail?' · '+m.locationDetail:''}</div><div class="mmi-tags">${tags}</div>${m.preCall?`<div style="font-size:12px;color:var(--gray);margin-bottom:8px">사전콜: ${m.preCall.callStatus} · ${m.preCall.callNote.length>30?m.preCall.callNote.slice(0,30)+'...':m.preCall.callNote}</div>`:''}<div class="mmi-actions">${actions}</div></div>`;
+  }).join('');
+}
+
+// ── 사전콜 ────────────────────────────────────────────────────
+function openPreCall(mid) {
+  document.getElementById('pc-mid').value=mid;
+  ['pc-status','pc-note','pc-special'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pc-confirm').value='Y';
+  setNow('pc-at'); om('m-precall');
+}
+async function doSavePreCall() {
+  const mid=document.getElementById('pc-mid').value, callStatus=document.getElementById('pc-status').value,
+    callAt=document.getElementById('pc-at').value, callNote=document.getElementById('pc-note').value.trim(),
+    specialNote=document.getElementById('pc-special').value.trim(), meetingConfirmYn=document.getElementById('pc-confirm').value;
+  if (!callStatus||!callAt||!callNote) { showToast('필수 항목을 모두 입력해 주세요.','error'); return; }
+  const r=await api('savePreCall',{meetingId:mid,callStatus,callAt,callNote,specialNote,meetingConfirmYn});
+  if (!r.success) { showToast(r.message,'error'); return; }
+  cm('m-precall'); showToast('사전콜 기록이 저장되었습니다.','success');
+  loadMyMeetings(); loadDashboard();
+}
+
+// ── 결과 기록 ─────────────────────────────────────────────────
+function openResult(mid) {
+  document.getElementById('res-mid').value=mid;
+  ['res-status','res-summary','res-detail','res-followup'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('res-next').value='';
+  setNow('res-at'); om('m-result');
+}
+async function doSaveResult() {
+  const mid=document.getElementById('res-mid').value, meetingResultStatus=document.getElementById('res-status').value,
+    actualMeetingAt=document.getElementById('res-at').value, resultSummary=document.getElementById('res-summary').value.trim(),
+    detailNote=document.getElementById('res-detail').value.trim(), followUpPlan=document.getElementById('res-followup').value.trim(),
+    nextActionDateTime=document.getElementById('res-next').value;
+  if (!meetingResultStatus||!actualMeetingAt||!resultSummary) { showToast('필수 항목을 모두 입력해 주세요.','error'); return; }
+  const r=await api('saveMeetingResult',{meetingId:mid,meetingResultStatus,actualMeetingAt,resultSummary,detailNote,followUpPlan,nextActionDateTime});
+  if (!r.success) { showToast(r.message,'error'); return; }
+  cm('m-result'); showToast('미팅 결과가 저장되었습니다.','success');
+  loadMyMeetings(); loadDashboard();
+}
+
+// ── 유틸 ──────────────────────────────────────────────────────
+function om(id){ document.getElementById(id).classList.add('open'); }
+function cm(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-ov').forEach(el=>el.addEventListener('click',function(e){ if(e.target===this) this.classList.remove('open'); }));
+function showToast(msg,type='') {
+  const t=document.getElementById('toast'); t.textContent=msg; t.className='show '+type;
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='',3000);
+}
+function showErr(el,msg){ el.textContent=msg; el.style.display='block'; }
+function setNow(id){ const n=new Date(); n.setMinutes(n.getMinutes()-n.getTimezoneOffset()); document.getElementById(id).value=n.toISOString().slice(0,16); }
+function stTxt(s){ return {OPEN:'모집중',PENDING_CONFIRM:'신청접수·확정대기',ASSIGNED:'담당자 확정',PRECALL_DONE:'사전콜 완료',MEETING_DONE:'미팅 완료',CANCELLED:'취소'}[s]||s; }
+</script>
+</body>
+</html>

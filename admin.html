@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미팅 배정 시스템 - 관리자</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','맑은 고딕',Apple SD Gothic Neo,sans-serif;background:#EEF2F7;color:#222;min-height:100vh;font-size:14px}
+.page{display:none}.page.active{display:block}
+:root{--navy:#1B3A6B;--blue:#2E75B6;--sky:#EBF3FB;--green:#27AE60;--green-light:#E8F8EF;--orange:#E67E22;--orange-light:#FEF3E2;--red:#E74C3C;--red-light:#FDECEA;--yellow:#F39C12;--gray:#6C757D;--gray-light:#F4F6F8;--border:#DDE3EA;--shadow:0 2px 12px rgba(0,0,0,.08);--shadow-lg:0 8px 32px rgba(0,0,0,.12)}
+
+/* 로그인 */
+#page-login{min-height:100vh;background:linear-gradient(135deg,#0D2040 0%,#1B3A6B 50%,#2E75B6 100%);display:none;align-items:center;justify-content:center;padding:20px}
+#page-login.active{display:flex}
+.auth-box{background:#fff;border-radius:20px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.auth-logo{text-align:center;margin-bottom:32px}
+.auth-logo .icon{width:64px;height:64px;background:var(--navy);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px}
+.auth-logo h1{font-size:20px;font-weight:700;color:var(--navy)}
+.auth-logo p{font-size:12px;color:var(--gray);margin-top:4px}
+.form-g{margin-bottom:18px}
+.form-g label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px}
+.form-g input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;font-size:14px;font-family:inherit;transition:border-color .2s;outline:none;background:#FAFBFC}
+.form-g input:focus{border-color:var(--blue);background:#fff}
+.btn-primary{width:100%;background:var(--navy);color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .2s}
+.btn-primary:hover{background:var(--blue)}
+.auth-err{background:#FDECEA;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+
+/* 레이아웃 */
+.layout{display:flex;min-height:calc(100vh - 0px)}
+.sidebar{width:220px;background:var(--navy);min-height:100vh;position:fixed;top:0;left:0;z-index:100;display:flex;flex-direction:column}
+.sidebar-brand{padding:20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-brand h2{font-size:15px;font-weight:700;color:#fff;margin-bottom:2px}
+.sidebar-brand p{font-size:11px;color:#90CAF9}
+.sidebar-nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;color:#B0C4DE;cursor:pointer;transition:all .2s;font-size:13px;font-weight:500;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(46,117,182,.3);color:#fff;border-left-color:#5B9BD5}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.sidebar-bottom{padding:16px;border-top:1px solid rgba(255,255,255,.1)}
+.sidebar-user{font-size:12px;color:#90CAF9;margin-bottom:10px}
+.btn-logout{width:100%;background:rgba(255,255,255,.1);border:none;color:#fff;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit}
+.btn-logout:hover{background:rgba(255,255,255,.2)}
+.main-area{margin-left:220px;min-height:100vh}
+.topbar{background:#fff;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.topbar-title{font-size:16px;font-weight:700;color:var(--navy)}
+.content{padding:24px;max-width:1100px}
+
+/* 탭 뷰 */
+.view{display:none}.view.active{display:block}
+
+/* 공통 */
+.card{background:#fff;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.card-title{font-size:15px;font-weight:700;color:var(--navy)}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-open{background:#E8F4FD;color:#1565C0}
+.badge-pending{background:var(--orange-light);color:var(--orange)}
+.badge-assigned{background:var(--green-light);color:var(--green)}
+.badge-precall{background:#E3F2FD;color:#0288D1}
+.badge-done{background:#F3E5F5;color:#7B1FA2}
+.badge-cancelled{background:#F5F5F5;color:#9E9E9E}
+.badge-warn{background:var(--orange-light);color:var(--orange)}
+.btn{border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#1F5A9A}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#219A52}
+.btn-orange{background:var(--orange);color:#fff}.btn-orange:hover{background:#CA6F1E}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#C0392B}
+.btn-outline{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}.btn-outline:hover{background:var(--sky)}
+.btn-ghost{background:var(--gray-light);color:#444;border:1px solid var(--border)}.btn-ghost:hover{background:var(--border)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:12px;font-weight:700;color:#555;margin-bottom:5px}
+.form-row label .req{color:var(--red);margin-left:3px}
+.fc{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 13px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;background:#FAFBFC}
+.fc:focus{border-color:var(--blue);background:#fff}
+select.fc{cursor:pointer}
+textarea.fc{resize:vertical;min-height:72px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{background:#F4F6F8;font-size:12px;font-weight:700;color:var(--gray);padding:10px 14px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
+.tbl td{padding:11px 14px;border-bottom:1px solid #F0F0F0;font-size:13px;vertical-align:middle}
+.tbl tr:hover td{background:#FAFBFC}
+.tbl .action-btns{display:flex;gap:6px}
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:14px 16px;background:#fff;border-radius:10px;box-shadow:var(--shadow)}
+.filter-bar select,.filter-bar input{border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;background:#fff}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--blue)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--gray)}
+.empty-state .icon{font-size:40px;margin-bottom:10px}
+.loading{text-align:center;padding:32px;color:var(--gray);font-size:13px}
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;max-width:90%;text-align:center;pointer-events:none}
+#toast.show{opacity:1}
+#toast.success{background:#1B5E20}
+#toast.error{background:#B71C1C}
+
+/* 대시보드 통계 */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:#fff;border-radius:14px;padding:18px 16px;box-shadow:var(--shadow);border-top:4px solid var(--blue)}
+.stat-card.orange{border-top-color:var(--orange)}
+.stat-card.red{border-top-color:var(--red)}
+.stat-card.green{border-top-color:var(--green)}
+.stat-card.yellow{border-top-color:var(--yellow)}
+.stat-card .num{font-size:32px;font-weight:800;color:var(--navy);line-height:1}
+.stat-card .lbl{font-size:12px;color:var(--gray);margin-top:6px}
+.stat-card .sub{font-size:11px;color:var(--gray);margin-top:4px}
+
+/* 신청자 목록 (확정 화면) */
+.applicant-item{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:border-color .2s}
+.applicant-item:hover{border-color:var(--blue)}
+.applicant-item.assigned{border-color:var(--green);background:var(--green-light)}
+.applicant-item.reserve{background:#F9F9F9}
+.ai-left{display:flex;align-items:center;gap:12px}
+.ai-no{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-no.reserve{background:#B0BEC5}
+.ai-name{font-size:14px;font-weight:700;color:var(--navy)}
+.ai-time{font-size:12px;color:var(--gray)}
+.ai-warn{font-size:11px;color:var(--orange);font-weight:600;margin-top:2px}
+
+/* 로그 타임라인 */
+.log-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #F0F0F0}
+.log-item:last-child{border-bottom:none}
+.log-time{font-size:11px;color:var(--gray);white-space:nowrap;min-width:140px}
+.log-actor{font-size:12px;font-weight:600;color:var(--navy)}
+.log-msg{font-size:12px;color:#555}
+
+/* 모달 */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-ov.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal.wide{max-width:760px}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy)}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);line-height:1;padding:4px}
+.modal-ft{margin-top:20px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.section-title{font-size:13px;font-weight:700;color:var(--gray);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px}
+.detail-row{display:flex;gap:8px;margin-bottom:6px;font-size:13px}
+.detail-lbl{color:var(--gray);min-width:80px;flex-shrink:0}
+.detail-val{color:#222;font-weight:500}
+
+@media(max-width:768px){
+  .sidebar{width:200px}
+  .main-area{margin-left:200px}
+  .content{padding:16px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .sidebar{transform:translateX(-100%);transition:transform .3s}
+  .sidebar.open{transform:translateX(0)}
+  .main-area{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- ① 로그인 -->
+<div id="page-login" class="page">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="icon">🛡️</div>
+      <h1>미팅 배정 시스템</h1>
+      <p>관리자 전용 페이지</p>
+    </div>
+    <div class="auth-err" id="login-err"></div>
+    <div class="form-g"><label>아이디</label><input type="text" id="inp-id" placeholder="관리자 아이디" autocomplete="username"></div>
+    <div class="form-g"><label>비밀번호</label><input type="password" id="inp-pw" placeholder="비밀번호" autocomplete="current-password"></div>
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">로그인</button>
+  </div>
+</div>
+
+<!-- ② 메인 -->
+<div id="page-main" class="page">
+  <div class="layout">
+    <!-- 사이드바 -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h2>🛡️ 미팅 배정 시스템</h2>
+        <p>관리자 콘솔</p>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" onclick="showView('v-dash')" id="ni-dash"><span class="icon">📊</span>대시보드</div>
+        <div class="nav-item" onclick="showView('v-meetings')" id="ni-meetings"><span class="icon">📋</span>전체 미팅 현황</div>
+        <div class="nav-item" onclick="showView('v-users')" id="ni-users"><span class="icon">👥</span>전문위원 현황</div>
+        <div class="nav-item" onclick="showView('v-accounts')" id="ni-accounts"><span class="icon">⚙️</span>계정 관리</div>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-user" id="sidebar-user"></div>
+        <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+      </div>
+    </aside>
+
+    <!-- 메인 영역 -->
+    <div class="main-area">
+      <div class="topbar">
+        <span class="topbar-title" id="topbar-title">대시보드</span>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-blue btn-sm" onclick="openCreateMeeting()">+ 미팅 등록</button>
+        </div>
+      </div>
+      <div class="content">
+
+        <!-- 대시보드 -->
+        <div id="v-dash" class="view active">
+          <div class="stat-grid">
+            <div class="stat-card blue"><div class="num" id="d-open">-</div><div class="lbl">모집중 미팅</div></div>
+            <div class="stat-card orange"><div class="num" id="d-pending">-</div><div class="lbl">확정 대기</div><div class="sub">신속 처리 필요</div></div>
+            <div class="stat-card red"><div class="num" id="d-noprecall">-</div><div class="lbl">사전콜 미기록</div></div>
+            <div class="stat-card red"><div class="num" id="d-noresult">-</div><div class="lbl">결과 미기록</div></div>
+            <div class="stat-card blue"><div class="num" id="d-today">-</div><div class="lbl">오늘 미팅</div></div>
+            <div class="stat-card blue"><div class="num" id="d-tomorrow">-</div><div class="lbl">내일 미팅</div></div>
+            <div class="stat-card green"><div class="num" id="d-weekassigned">-</div><div class="lbl">이번 주 배정</div></div>
+          </div>
+
+          <!-- 확정 대기 목록 -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">⚡ 확정 대기 중인 미팅</span>
+              <button class="btn btn-outline btn-sm" onclick="showView('v-meetings')">전체 현황 보기</button>
+            </div>
+            <div id="dash-pending-list"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+          </div>
+
+          <!-- 사전콜/결과 미기록 -->
+          <div class="card" id="dash-norecord-card" style="display:none">
+            <div class="card-header"><span class="card-title">⚠️ 기록 필요 항목</span></div>
+            <div id="dash-norecord-list"></div>
+          </div>
+        </div>
+
+        <!-- 전체 미팅 현황 -->
+        <div id="v-meetings" class="view">
+          <div class="filter-bar">
+            <select id="f-status" onchange="loadMeetings()">
+              <option value="">전체 상태</option>
+              <option value="OPEN">모집중</option>
+              <option value="PENDING_CONFIRM">확정 대기</option>
+              <option value="ASSIGNED">담당자 확정</option>
+              <option value="PRECALL_DONE">사전콜 완료</option>
+              <option value="MEETING_DONE">미팅 완료</option>
+              <option value="CANCELLED">취소</option>
+            </select>
+            <select id="f-special" onchange="loadMeetings()">
+              <option value="">전체</option>
+              <option value="noprecall">사전콜 미기록만</option>
+              <option value="noresult">결과 미기록만</option>
+            </select>
+            <input type="date" id="f-from" onchange="loadMeetings()" placeholder="시작일">
+            <input type="date" id="f-to" onchange="loadMeetings()" placeholder="종료일">
+            <button class="btn btn-ghost btn-sm" onclick="clearFilters()">필터 초기화</button>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div id="meetings-table"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+          </div>
+        </div>
+
+        <!-- 전문위원 현황 -->
+        <div id="v-users" class="view">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+              <span class="card-title">전문위원 진행 현황</span>
+              <button class="btn btn-blue btn-sm" onclick="loadUsers()">새로 고침</button>
+            </div>
+            <div id="users-table"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+          </div>
+        </div>
+
+        <!-- 계정 관리 -->
+        <div id="v-accounts" class="view">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">계정 관리</span>
+              <button class="btn btn-blue btn-sm" onclick="openCreateUser()">+ 계정 등록</button>
+            </div>
+            <div id="accounts-table"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /main-area -->
+  </div>
+</div>
+
+<!-- 모달: 미팅 등록/수정 -->
+<div class="modal-ov" id="m-meeting-form">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-title" id="mf-title">미팅 등록</span><button class="modal-close" onclick="cm('m-meeting-form')">✕</button></div>
+    <input type="hidden" id="mf-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+      <div class="form-row" style="grid-column:1/-1"><label>고객명 <span class="req">*</span></label><input type="text" class="fc" id="mf-customer" placeholder="고객사명 또는 고객명"></div>
+      <div class="form-row"><label>미팅 날짜 <span class="req">*</span></label><input type="date" class="fc" id="mf-date"></div>
+      <div class="form-row"><label>미팅 시간 <span class="req">*</span></label><input type="time" class="fc" id="mf-time"></div>
+      <div class="form-row"><label>방식 <span class="req">*</span></label>
+        <select class="fc" id="mf-location"><option>대면</option><option>비대면</option><option>전화</option></select></div>
+      <div class="form-row"><label>상세 장소</label><input type="text" class="fc" id="mf-location-detail" placeholder="주소 또는 장소명"></div>
+      <div class="form-row" style="grid-column:1/-1"><label>미팅 안내 내용</label><textarea class="fc" id="mf-summary" rows="3" placeholder="고객 정보, 미팅 목적 등을 입력해 주세요"></textarea></div>
+      <div class="form-row" style="grid-column:1/-1"><label>준비사항 / 특이사항</label><textarea class="fc" id="mf-note" rows="2"></textarea></div>
+      <div class="form-row" style="grid-column:1/-1"><label>관리자 메모</label><input type="text" class="fc" id="mf-memo" placeholder="내부 메모 (전문위원에게 비공개)"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="cm('m-meeting-form')">취소</button>
+      <button class="btn btn-blue" onclick="saveMeeting()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 미팅 상세 (신청자 목록 + 확정) -->
+<div class="modal-ov" id="m-meeting-detail">
+  <div class="modal wide">
+    <div class="modal-hd"><span class="modal-title" id="md-title">미팅 상세</span><button class="modal-close" onclick="cm('m-meeting-detail')">✕</button></div>
+    <div id="md-body"><div class="loading"><span class="spinner"></span>불러오는 중...</div></div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="cm('m-meeting-detail')">닫기</button>
+      <button class="btn btn-outline btn-sm" id="md-btn-edit" onclick="openEditMeeting()" style="display:none">미팅 수정</button>
+      <button class="btn btn-red btn-sm" id="md-btn-close" onclick="closeMeeting()" style="display:none">모집 마감</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 담당자 변경 메모 -->
+<div class="modal-ov" id="m-change-memo">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd"><span class="modal-title">담당자 변경 확인</span><button class="modal-close" onclick="cm('m-change-memo')">✕</button></div>
+    <p id="change-memo-msg" style="font-size:14px;margin-bottom:16px;color:#444"></p>
+    <div class="form-row"><label>변경 사유 (선택)</label><input type="text" class="fc" id="change-memo-input" placeholder="변경 사유를 입력해 주세요"></div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="cm('m-change-memo')">취소</button>
+      <button class="btn btn-blue" onclick="doChangeAssignee()">확정 변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 계정 등록 -->
+<div class="modal-ov" id="m-user-form">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd"><span class="modal-title">계정 등록</span><button class="modal-close" onclick="cm('m-user-form')">✕</button></div>
+    <div class="form-row"><label>이름 <span class="req">*</span></label><input type="text" class="fc" id="uf-name" placeholder="전문위원 이름"></div>
+    <div class="form-row"><label>아이디 <span class="req">*</span></label><input type="text" class="fc" id="uf-id" placeholder="로그인 아이디 (영문+숫자)"></div>
+    <div class="form-row"><label>휴대폰번호 <span class="req">*</span></label><input type="text" class="fc" id="uf-phone" placeholder="010-1234-5678"></div>
+    <div class="form-row"><label>역할</label>
+      <select class="fc" id="uf-role"><option value="expert">전문위원</option><option value="admin">관리자</option></select></div>
+    <div class="form-row"><label>메모</label><input type="text" class="fc" id="uf-memo" placeholder="내부 메모 (선택)"></div>
+    <div style="background:var(--sky);border-radius:8px;padding:12px;font-size:12px;color:var(--blue);margin-bottom:16px">
+      💡 초기 비밀번호: <strong>이름 + 휴대폰번호 전체</strong><br>예) 홍길동010-1234-5678
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="cm('m-user-form')">취소</button>
+      <button class="btn btn-blue" onclick="createUser()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 비밀번호 초기화 확인 -->
+<div class="modal-ov" id="m-reset-pw">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><span class="modal-title">비밀번호 초기화</span><button class="modal-close" onclick="cm('m-reset-pw')">✕</button></div>
+    <p id="reset-pw-msg" style="font-size:14px;line-height:1.7;color:#444;margin-bottom:16px"></p>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="cm('m-reset-pw')">취소</button>
+      <button class="btn btn-orange" onclick="doResetPassword()">초기화</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모달: 관리자 첫 로그인 비밀번호 변경 -->
+<div class="modal-ov" id="m-changepw">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hd"><span class="modal-title">🔒 비밀번호 변경 필요</span></div>
+    <p style="font-size:13px;color:var(--gray);margin-bottom:20px">첫 로그인입니다. 보안을 위해 새 비밀번호를 설정해 주세요.</p>
+    <div class="auth-err" id="adm-changepw-err"></div>
+    <div class="form-row"><label>현재 비밀번호 <span class="req">*</span></label><input type="password" class="fc" id="acp-cur" placeholder="현재 비밀번호 (초기: 이름+휴대폰번호)"></div>
+    <div class="form-row"><label>새 비밀번호 <span class="req">*</span> <span style="font-size:11px;color:var(--gray);font-weight:400">(8자 이상, 휴대폰번호 불가)</span></label><input type="password" class="fc" id="acp-new" placeholder="새 비밀번호"></div>
+    <div class="form-row"><label>새 비밀번호 확인 <span class="req">*</span></label><input type="password" class="fc" id="acp-confirm" placeholder="비밀번호 재입력"></div>
+    <div class="modal-ft">
+      <button class="btn btn-blue" onclick="doAdminChangePw()">비밀번호 변경</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 설정 ──────────────────────────────────────────────────────
+const API_URL = 'https://script.google.com/macros/s/여기에_APPS_SCRIPT_URL_입력/exec';
+
+// ── 전역 상태 ─────────────────────────────────────────────────
+let S = { token:null, user:null, curMid:null, curAppId:null, curUserId:null, pendingConfirmApp:null };
+
+// ── 초기화 ────────────────────────────────────────────────────
+window.onload = () => {
+  const t=localStorage.getItem('adm_token'), u=localStorage.getItem('adm_user');
+  if (t && u) {
+    S.token=t; S.user=JSON.parse(u);
+    if (S.user.role !== 'admin') { alert('관리자 계정이 아닙니다.'); showPage('page-login'); return; }
+    showPage('page-main'); initMain();
+    if (S.user.mustChangePassword === true || S.user.mustChangePassword === 'true') {
+      om('m-changepw');
+    }
+  } else showPage('page-login');
+  document.getElementById('inp-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  document.getElementById('acp-confirm').addEventListener('keydown', e=>{ if(e.key==='Enter') doAdminChangePw(); });
+};
+
+function showPage(id){ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const map={'v-dash':'ni-dash','v-meetings':'ni-meetings','v-users':'ni-users','v-accounts':'ni-accounts'};
+  const titles={'v-dash':'대시보드','v-meetings':'전체 미팅 현황','v-users':'전문위원 현황','v-accounts':'계정 관리'};
+  if(map[id]) document.getElementById(map[id]).classList.add('active');
+  document.getElementById('topbar-title').textContent=titles[id]||'';
+  if(id==='v-meetings') loadMeetings();
+  if(id==='v-users')    loadUsers();
+  if(id==='v-accounts') loadAccounts();
+}
+
+// ── API ───────────────────────────────────────────────────────
+async function api(action, body={}) {
+  try {
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,token:S.token,...body})});
+    const data=await r.json();
+    // 세션 만료 감지 → 자동 로그아웃
+    if (!data.success && data.message && data.message.includes('인증이 필요합니다')) {
+      localStorage.removeItem('adm_token');
+      localStorage.removeItem('adm_user');
+      S.token=null; S.user=null;
+      showPage('page-login');
+      showToast('세션이 만료되었습니다. 다시 로그인해 주세요.', 'error');
+    }
+    return data;
+  } catch(e){ return {success:false,message:'서버 연결 오류. 잠시 후 다시 시도해 주세요.'}; }
+}
+
+// ── 로그인 ────────────────────────────────────────────────────
+async function doLogin(){
+  const loginId=document.getElementById('inp-id').value.trim(), password=document.getElementById('inp-pw').value;
+  const btn=document.getElementById('btn-login'), err=document.getElementById('login-err');
+  if(!loginId||!password){ showErr(err,'아이디와 비밀번호를 입력해 주세요.'); return; }
+  err.style.display='none'; btn.textContent='로그인 중...'; btn.disabled=true;
+  const r=await api('login',{loginId,password});
+  btn.textContent='로그인'; btn.disabled=false;
+  if(!r.success){ showErr(err,r.message); return; }
+  if(r.user.role!=='admin'){ showErr(err,'관리자 계정이 아닙니다.'); return; }
+  S.token=r.token; S.user=r.user;
+  localStorage.setItem('adm_token',r.token); localStorage.setItem('adm_user',JSON.stringify(r.user));
+  showPage('page-main');
+  if (r.mustChangePassword) {
+    initMain();
+    om('m-changepw');
+  } else {
+    initMain();
+  }
+}
+
+async function doLogout(){
+  await api('logout');
+  localStorage.removeItem('adm_token'); localStorage.removeItem('adm_user');
+  S.token=null; S.user=null; showPage('page-login');
+}
+
+async function initMain(){
+  document.getElementById('sidebar-user').textContent='👤 '+S.user.displayName;
+  loadDashboard();
+}
+
+// ── 대시보드 ──────────────────────────────────────────────────
+async function loadDashboard(){
+  const [dr, mr] = await Promise.all([api('adminGetDashboard'), api('adminGetMeetings',{filterStatus:'PENDING_CONFIRM'})]);
+  if(dr.success){
+    document.getElementById('d-open').textContent=dr.openCount||0;
+    document.getElementById('d-pending').textContent=dr.pendingCount||0;
+    document.getElementById('d-noprecall').textContent=dr.noPreCallCount||0;
+    document.getElementById('d-noresult').textContent=dr.noResultCount||0;
+    document.getElementById('d-today').textContent=dr.todayCount||0;
+    document.getElementById('d-tomorrow').textContent=dr.tomorrowCount||0;
+    document.getElementById('d-weekassigned').textContent=dr.weekAssigned||0;
+  }
+  const pendingEl=document.getElementById('dash-pending-list');
+  if(mr.success && mr.list.length>0){
+    pendingEl.innerHTML=`<table class="tbl"><thead><tr><th>고객명</th><th>미팅 일시</th><th>방식</th><th>신청자</th><th>처리</th></tr></thead><tbody>`+
+      mr.list.map(m=>`<tr>
+        <td><strong>${m.customerName}</strong></td>
+        <td>${m.meetingDate} ${m.meetingTime}</td>
+        <td>${m.locationType}</td>
+        <td>${m.applicationCount}명</td>
+        <td><button class="btn btn-orange btn-sm" onclick="openMeetingDetail('${m.meetingId}')">신청자 확인 · 확정</button></td>
+      </tr>`).join('')+`</tbody></table>`;
+  } else pendingEl.innerHTML=`<div class="empty-state"><div class="icon">✅</div><p>확정 대기 중인 미팅이 없습니다.</p></div>`;
+
+  // 기록 필요 카드 초기화 후 조건부 표시
+  document.getElementById('dash-norecord-card').style.display='none';
+  const [npr, nrr] = await Promise.all([api('adminGetMeetings',{filterNoPreCall:true}), api('adminGetMeetings',{filterNoResult:true})]);
+  const np=npr.success?npr.list:[], nr=nrr.success?nrr.list:[];
+  if(np.length||nr.length){
+    document.getElementById('dash-norecord-card').style.display='block';
+    let html='';
+    np.slice(0,5).forEach(m=>{ html+=`<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div><strong>${m.customerName}</strong> &nbsp;<span class="badge badge-warn">사전콜 미기록</span><br><span style="font-size:12px;color:var(--gray)">${m.meetingDate} · ${m.assignedUserName}</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="openMeetingDetail('${m.meetingId}')">상세</button></div>`; });
+    nr.slice(0,5).forEach(m=>{ html+=`<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div><strong>${m.customerName}</strong> &nbsp;<span class="badge badge-cancelled">결과 미기록</span><br><span style="font-size:12px;color:var(--gray)">${m.meetingDate} · ${m.assignedUserName}</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="openMeetingDetail('${m.meetingId}')">상세</button></div>`; });
+    document.getElementById('dash-norecord-list').innerHTML=html;
+  }
+}
+
+// ── 미팅 목록 ─────────────────────────────────────────────────
+async function loadMeetings(){
+  const el=document.getElementById('meetings-table');
+  el.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  const fs=document.getElementById('f-status').value, fsp=document.getElementById('f-special').value;
+  const ff=document.getElementById('f-from').value, ft=document.getElementById('f-to').value;
+  const body={ filterStatus:fs, filterNoPreCall:fsp==='noprecall', filterNoResult:fsp==='noresult', dateFrom:ff, dateTo:ft };
+  const r=await api('adminGetMeetings',body);
+  if(!r.success){ el.innerHTML=`<div class="empty-state"><p>${r.message}</p></div>`; return; }
+  if(!r.list.length){ el.innerHTML=`<div class="empty-state"><div class="icon">📭</div><p>조건에 맞는 미팅이 없습니다.</p></div>`; return; }
+  el.innerHTML=`<table class="tbl"><thead><tr><th>고객명</th><th>미팅 일시</th><th>방식</th><th>상태</th><th>담당자</th><th>신청자</th><th>사전콜</th><th>결과</th><th>처리</th></tr></thead><tbody>`+
+    r.list.map(m=>`<tr>
+      <td><strong>${m.customerName}</strong>${m.adminMemo?`<br><span style="font-size:11px;color:var(--gray)">${m.adminMemo}</span>`:''}</td>
+      <td style="white-space:nowrap">${m.meetingDate}<br><span style="font-size:12px;color:var(--gray)">${m.meetingTime}</span></td>
+      <td>${m.locationType}</td>
+      <td><span class="badge ${stClass(m.status)}">${stTxt(m.status)}</span></td>
+      <td>${m.assignedUserName||'<span style="color:#ccc">미정</span>'}</td>
+      <td style="text-align:center">${m.applicationCount}</td>
+      <td style="text-align:center">${m.hasPreCall?'<span style="color:var(--green)">✓</span>':'<span style="color:#ccc">-</span>'}</td>
+      <td style="text-align:center">${m.hasResult?'<span style="color:var(--green)">✓</span>':'<span style="color:#ccc">-</span>'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openMeetingDetail('${m.meetingId}')">상세</button></td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+function clearFilters(){
+  ['f-status','f-special','f-from','f-to'].forEach(id=>document.getElementById(id).value='');
+  loadMeetings();
+}
+
+// ── 미팅 상세 (신청자 확정 포함) ──────────────────────────────
+let currentMeetingData = null; // Fix #3: 수정 폼 기존 데이터 채우기용
+
+async function openMeetingDetail(mid){
+  S.curMid=mid;
+  const body=document.getElementById('md-body');
+  body.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  om('m-meeting-detail');
+  const r=await api('adminGetMeetingDetail',{meetingId:mid});
+  if(!r.success){ body.innerHTML=`<p style="color:var(--red)">${r.message}</p>`; return; }
+  const m=r.meeting;
+  currentMeetingData = m; // Fix #3: 전역 보관
+  document.getElementById('md-title').textContent=m.customerName+' 미팅';
+  document.getElementById('md-btn-edit').style.display='inline-flex';
+  document.getElementById('md-btn-close').style.display=(m.status==='OPEN'||m.status==='PENDING_CONFIRM')?'inline-flex':'none';
+
+  // 신청자 목록
+  let applicantsHtml='<div class="section-title">신청자 목록 (신청 순서 기준)</div>';
+  if(!r.applicants||!r.applicants.length){
+    applicantsHtml+='<p style="color:var(--gray);font-size:13px;padding:12px 0">아직 신청자가 없습니다.</p>';
+  } else {
+    // Fix #8: userName 특수문자 → data 속성으로 전달
+    applicantsHtml+=r.applicants.map(a=>{
+      const safeUserName = a.userName.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      const actionBtn = a.status!=='ASSIGNED'
+        ? `<button class="btn btn-green btn-sm" data-app-id="${a.applicationId}" data-user-name="${safeUserName}" onclick="confirmAssignee(this.dataset.appId,this.dataset.userName)">확정</button>`
+        : `<button class="btn btn-outline btn-sm" data-app-id="${a.applicationId}" data-user-name="${safeUserName}" onclick="openChangeMemo(this.dataset.appId,this.dataset.userName)">담당자 변경</button>`;
+      return `
+      <div class="applicant-item ${a.status==='ASSIGNED'?'assigned':a.status==='RESERVE'?'reserve':''}">
+        <div class="ai-left">
+          <div class="ai-no ${a.status==='RESERVE'?'reserve':''}">${a.orderNo}</div>
+          <div>
+            <div class="ai-name">${a.userName} ${a.status==='ASSIGNED'?'<span class="badge badge-assigned">담당자</span>':a.status==='RESERVE'?'<span class="badge badge-cancelled">예비</span>':''}</div>
+            <div class="ai-time">신청: ${a.appliedAt}</div>
+            ${a.isWeeklyAssigned?'<div class="ai-warn">⚠️ 이번 주 다른 미팅 담당자 확정 이력 있음</div>':''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">${actionBtn}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // 미팅 기본정보
+  const infoHtml=`
+    <div class="detail-row"><span class="detail-lbl">고객명</span><span class="detail-val">${m.customerName}</span></div>
+    <div class="detail-row"><span class="detail-lbl">일시</span><span class="detail-val">${m.meetingDate} (${m.weekday}) ${m.meetingTime}</span></div>
+    <div class="detail-row"><span class="detail-lbl">방식</span><span class="detail-val">${m.locationType}${m.locationDetail?' · '+m.locationDetail:''}</span></div>
+    <div class="detail-row"><span class="detail-lbl">상태</span><span class="detail-val"><span class="badge ${stClass(m.status)}">${stTxt(m.status)}</span></span></div>
+    <div class="detail-row"><span class="detail-lbl">담당자</span><span class="detail-val">${m.assignedUserName||'미정'}</span></div>
+    <div class="detail-row"><span class="detail-lbl">신청자 수</span><span class="detail-val">${m.applicationCount}명</span></div>
+    ${m.meetingSummary?`<div class="detail-row"><span class="detail-lbl">안내내용</span><span class="detail-val" style="white-space:pre-wrap">${m.meetingSummary}</span></div>`:''}
+    ${m.preparationNote?`<div class="detail-row"><span class="detail-lbl">준비사항</span><span class="detail-val" style="white-space:pre-wrap">${m.preparationNote}</span></div>`:''}
+    ${m.adminMemo?`<div class="detail-row"><span class="detail-lbl">관리자 메모</span><span class="detail-val">${m.adminMemo}</span></div>`:''}`;
+
+  // 사전콜
+  const precallHtml=r.preCall?`<div class="section-title" style="margin-top:20px">사전콜 기록</div>
+    <div style="background:var(--sky);border-radius:8px;padding:12px;font-size:13px">
+      <strong>${r.preCall.callStatus}</strong> · ${r.preCall.callAt}<br>
+      ${r.preCall.callNote}<br>
+      미팅 확정: ${r.preCall.meetingConfirmYn==='Y'?'✅ 예':'❌ 아니오'}
+    </div>`:`<div class="section-title" style="margin-top:20px">사전콜 기록</div><p style="color:var(--gray);font-size:13px">미기록</p>`;
+
+  // 결과
+  const resultHtml=r.result?`<div class="section-title" style="margin-top:20px">미팅 결과</div>
+    <div style="background:var(--green-light);border-radius:8px;padding:12px;font-size:13px">
+      <strong>${r.result.meetingResultStatus}</strong> · ${r.result.actualMeetingAt}<br>
+      ${r.result.resultSummary}<br>
+      ${r.result.followUpPlan?'후속: '+r.result.followUpPlan:''}
+    </div>`:`<div class="section-title" style="margin-top:20px">미팅 결과</div><p style="color:var(--gray);font-size:13px">미기록</p>`;
+
+  // 이력 로그
+  let logHtml='<div class="section-title" style="margin-top:20px">전체 이력</div>';
+  if(r.logs&&r.logs.length){
+    logHtml+=r.logs.map(l=>`<div class="log-item"><span class="log-time">${l.timestamp}</span><div><div class="log-actor">${l.actorName}</div><div class="log-msg">${l.summary}</div></div></div>`).join('');
+  } else logHtml+='<p style="color:var(--gray);font-size:13px">이력 없음</p>';
+
+  body.innerHTML=`
+    <div class="section-title">미팅 정보</div>${infoHtml}
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+    ${applicantsHtml}${precallHtml}${resultHtml}${logHtml}`;
+}
+
+// ── 담당자 확정 ───────────────────────────────────────────────
+async function confirmAssignee(appId, userName){
+  if(!confirm(`"${userName}"님을 담당자로 확정하시겠습니까?`)) return;
+  const r=await api('adminConfirmAssignee',{meetingId:S.curMid, applicationId:appId});
+  if(!r.success){ showToast(r.message,'error'); return; }
+  showToast(r.message,'success');
+  openMeetingDetail(S.curMid);
+  loadDashboard();
+}
+
+// ── 담당자 변경 ───────────────────────────────────────────────
+function openChangeMemo(appId, userName){
+  S.pendingConfirmApp={appId, userName};
+  document.getElementById('change-memo-msg').textContent=`"${userName}"님으로 담당자를 변경하시겠습니까?`;
+  document.getElementById('change-memo-input').value='';
+  om('m-change-memo');
+}
+async function doChangeAssignee(){
+  const memo=document.getElementById('change-memo-input').value;
+  const r=await api('adminChangeAssignee',{meetingId:S.curMid, applicationId:S.pendingConfirmApp.appId, changeMemo:memo});
+  cm('m-change-memo');
+  if(!r.success){ showToast(r.message,'error'); return; }
+  showToast('담당자가 변경되었습니다.','success');
+  openMeetingDetail(S.curMid); loadDashboard();
+}
+
+// ── 모집 마감 ─────────────────────────────────────────────────
+async function closeMeeting(){
+  if(!confirm('이 미팅을 마감 처리하시겠습니까?')) return;
+  const r=await api('adminCloseMeeting',{meetingId:S.curMid});
+  if(!r.success){ showToast(r.message,'error'); return; }
+  cm('m-meeting-detail'); showToast('마감 처리되었습니다.','success');
+  loadDashboard(); if(document.getElementById('v-meetings').classList.contains('active')) loadMeetings();
+}
+
+// ── 미팅 등록/수정 ────────────────────────────────────────────
+function openCreateMeeting(){
+  document.getElementById('mf-id').value='';
+  document.getElementById('mf-title').textContent='미팅 등록';
+  ['mf-customer','mf-location-detail','mf-summary','mf-note','mf-memo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mf-date').value='';
+  document.getElementById('mf-time').value='';
+  document.getElementById('mf-location').value='대면';
+  om('m-meeting-form');
+}
+function openEditMeeting(){
+  cm('m-meeting-detail');
+  const m = currentMeetingData;
+  if (!m) { showToast('미팅 데이터를 불러올 수 없습니다.', 'error'); return; }
+  document.getElementById('mf-id').value = S.curMid;
+  document.getElementById('mf-title').textContent = '미팅 수정';
+  document.getElementById('mf-customer').value = m.customerName || '';
+  document.getElementById('mf-date').value = m.meetingDate || '';
+  document.getElementById('mf-time').value = m.meetingTime || '';
+  document.getElementById('mf-location').value = m.locationType || '대면';
+  document.getElementById('mf-location-detail').value = m.locationDetail || '';
+  document.getElementById('mf-summary').value = m.meetingSummary || '';
+  document.getElementById('mf-note').value = m.preparationNote || '';
+  document.getElementById('mf-memo').value = m.adminMemo || '';
+  om('m-meeting-form');
+}
+async function saveMeeting(){
+  const id=document.getElementById('mf-id').value;
+  const body={
+    customerName:document.getElementById('mf-customer').value.trim(),
+    meetingDate:document.getElementById('mf-date').value,
+    meetingTime:document.getElementById('mf-time').value,
+    locationType:document.getElementById('mf-location').value,
+    locationDetail:document.getElementById('mf-location-detail').value.trim(),
+    meetingSummary:document.getElementById('mf-summary').value.trim(),
+    preparationNote:document.getElementById('mf-note').value.trim(),
+    adminMemo:document.getElementById('mf-memo').value.trim()
+  };
+  if(!body.customerName||!body.meetingDate||!body.meetingTime){ showToast('필수 항목을 입력해 주세요.','error'); return; }
+
+  // Fix #13: 저장 버튼 중복 클릭 방지
+  const saveBtn = document.querySelector('#m-meeting-form .btn-blue');
+  saveBtn.disabled=true; saveBtn.textContent='저장 중...';
+
+  // Fix #2: 비운영 요일 weekdayWarning 처리
+  const r=await api(id?'adminUpdateMeeting':'adminCreateMeeting',{...body, meetingId:id||undefined});
+
+  if(!r.success){
+    saveBtn.disabled=false; saveBtn.textContent='저장';
+    if(r.weekdayWarning){
+      if(confirm(r.message+'\n\n그래도 등록하시겠습니까?')){
+        saveBtn.disabled=true; saveBtn.textContent='저장 중...';
+        const r2=await api('adminCreateMeeting',{...body, forceCreate:true});
+        saveBtn.disabled=false; saveBtn.textContent='저장';
+        if(!r2.success){ showToast(r2.message,'error'); return; }
+        cm('m-meeting-form'); showToast(r2.message,'success');
+        loadDashboard(); if(document.getElementById('v-meetings').classList.contains('active')) loadMeetings();
+      }
+    } else {
+      showToast(r.message,'error');
+    }
+    return;
+  }
+
+  saveBtn.disabled=false; saveBtn.textContent='저장';
+  cm('m-meeting-form'); showToast(r.message,'success');
+  loadDashboard(); if(document.getElementById('v-meetings').classList.contains('active')) loadMeetings();
+}
+
+// ── 전문위원 현황 ─────────────────────────────────────────────
+async function loadUsers(){
+  const el=document.getElementById('users-table');
+  el.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  const r=await api('adminGetUsers');
+  if(!r.success){ el.innerHTML=`<div class="empty-state"><p>${r.message}</p></div>`; return; }
+  el.innerHTML=`<table class="tbl"><thead><tr><th>이름</th><th>아이디</th><th>이번주 확정</th><th>총 배정</th><th>최근 로그인</th><th>상태</th></tr></thead><tbody>`+
+    r.list.map(u=>`<tr>
+      <td><strong>${u.displayName}</strong></td>
+      <td style="color:var(--gray)">${u.loginId}</td>
+      <td style="text-align:center">${u.thisWeekAssigned?'<span class="badge badge-assigned">확정됨</span>':'<span style="color:#ccc">-</span>'}</td>
+      <td style="text-align:center">${u.totalAssigned}</td>
+      <td style="font-size:12px;color:var(--gray)">${u.lastLoginAt||'-'}</td>
+      <td><span class="badge ${u.status==='active'?'badge-assigned':'badge-cancelled'}">${u.status==='active'?'활성':'비활성'}</span></td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+// ── 계정 관리 ─────────────────────────────────────────────────
+async function loadAccounts(){
+  const el=document.getElementById('accounts-table');
+  el.innerHTML='<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
+  const r=await api('adminGetUsers');
+  if(!r.success){ el.innerHTML=`<div class="empty-state"><p>${r.message}</p></div>`; return; }
+  el.innerHTML=`<table class="tbl"><thead><tr><th>이름</th><th>아이디</th><th>역할</th><th>휴대폰</th><th>상태</th><th>첫로그인</th><th>관리</th></tr></thead><tbody>`+
+    r.list.map(u=>`<tr>
+      <td><strong>${u.displayName}</strong></td>
+      <td style="color:var(--gray)">${u.loginId}</td>
+      <td>${u.role==='admin'?'<span class="badge badge-open">관리자</span>':'전문위원'}</td>
+      <td style="font-size:12px">${u.phone||'-'}</td>
+      <td><span class="badge ${u.status==='active'?'badge-assigned':'badge-cancelled'}">${u.status==='active'?'활성':'비활성'}</span></td>
+      <td style="text-align:center">${u.mustChangePassword==='Y'?'<span style="color:var(--orange)">변경필요</span>':'완료'}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-sm ${u.status==='active'?'btn-ghost':'btn-green'}" onclick="toggleUser('${u.userId}','${u.displayName}',${u.status!=='active'})">${u.status==='active'?'비활성화':'활성화'}</button>
+        <button class="btn btn-orange btn-sm" onclick="openResetPw('${u.userId}','${u.displayName}')">비번 초기화</button>
+      </div></td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+function openCreateUser(){
+  ['uf-name','uf-id','uf-phone','uf-memo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('uf-role').value='expert';
+  om('m-user-form');
+}
+async function createUser(){
+  const body={ displayName:document.getElementById('uf-name').value.trim(), loginId:document.getElementById('uf-id').value.trim(), phone:document.getElementById('uf-phone').value.trim(), role:document.getElementById('uf-role').value, memo:document.getElementById('uf-memo').value.trim() };
+  if(!body.displayName||!body.loginId||!body.phone){ showToast('필수 항목을 입력해 주세요.','error'); return; }
+  const saveBtn=document.querySelector('#m-user-form .btn-blue');
+  saveBtn.disabled=true; saveBtn.textContent='등록 중...';
+  const r=await api('adminCreateUser',body);
+  saveBtn.disabled=false; saveBtn.textContent='등록';
+  if(!r.success){ showToast(r.message,'error'); return; }
+  cm('m-user-form'); showToast(r.message,'success');
+  loadAccounts();
+}
+
+async function toggleUser(userId, name, activate){
+  if(!confirm(`"${name}"님 계정을 ${activate?'활성화':'비활성화'}하시겠습니까?`)) return;
+  const r=await api('adminToggleUser',{userId, activate});
+  if(!r.success){ showToast(r.message,'error'); return; }
+  showToast(r.message,'success'); loadAccounts();
+}
+
+function openResetPw(userId, name){
+  S.curUserId=userId;
+  document.getElementById('reset-pw-msg').textContent=`"${name}"님의 비밀번호를 초기화하시겠습니까?\n초기 비밀번호: 이름 + 휴대폰번호 전체`;
+  om('m-reset-pw');
+}
+async function doResetPassword(){
+  const r=await api('adminResetPassword',{userId:S.curUserId});
+  cm('m-reset-pw');
+  if(!r.success){ showToast(r.message,'error'); return; }
+  showToast('비밀번호가 초기화되었습니다. 초기 비밀번호: '+r.initPassword,'success');
+}
+
+// ── 관리자 비밀번호 변경 (첫 로그인) ─────────────────────────
+async function doAdminChangePw(){
+  const cur=document.getElementById('acp-cur').value;
+  const nw=document.getElementById('acp-new').value;
+  const conf=document.getElementById('acp-confirm').value;
+  const err=document.getElementById('adm-changepw-err');
+  err.style.display='none';
+  if(!cur||!nw||!conf){ showErr(err,'모든 항목을 입력해 주세요.'); return; }
+  if(nw!==conf){ showErr(err,'새 비밀번호가 일치하지 않습니다.'); return; }
+  if(nw.length<8){ showErr(err,'비밀번호는 8자 이상이어야 합니다.'); return; }
+  const saveBtn=document.querySelector('#m-changepw .btn-blue');
+  saveBtn.disabled=true; saveBtn.textContent='변경 중...';
+  const r=await api('changePassword',{currentPassword:cur,newPassword:nw});
+  saveBtn.disabled=false; saveBtn.textContent='비밀번호 변경';
+  if(!r.success){ showErr(err,r.message); return; }
+  S.user.mustChangePassword=false;
+  localStorage.setItem('adm_user',JSON.stringify(S.user));
+  cm('m-changepw');
+  showToast('비밀번호가 변경되었습니다.','success');
+}
+
+// ── 유틸 ──────────────────────────────────────────────────────
+function om(id){ document.getElementById(id).classList.add('open'); }
+function cm(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-ov').forEach(el=>el.addEventListener('click',function(e){ if(e.target===this) this.classList.remove('open'); }));
+function showToast(msg,type=''){
+  const t=document.getElementById('toast'); t.textContent=msg; t.className='show '+type;
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='',4000);
+}
+function showErr(el,msg){ el.textContent=msg; el.style.display='block'; }
+function stTxt(s){ return {OPEN:'모집중',PENDING_CONFIRM:'확정 대기',ASSIGNED:'담당자 확정',PRECALL_DONE:'사전콜 완료',MEETING_DONE:'미팅 완료',CANCELLED:'취소'}[s]||s; }
+function stClass(s){ return {OPEN:'badge-open',PENDING_CONFIRM:'badge-pending',ASSIGNED:'badge-assigned',PRECALL_DONE:'badge-precall',MEETING_DONE:'badge-done',CANCELLED:'badge-cancelled'}[s]||''; }
+</script>
+</body>
+</html>
